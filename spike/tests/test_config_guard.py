@@ -81,31 +81,45 @@ def test_extract_text_per_tool():
 # --------------------------------------------------------------------------- #
 # hook entrypoint (real exit codes)
 # --------------------------------------------------------------------------- #
+def _ks_project():
+    """A Keystone-managed project (has a .keystone/ dir) so the guard is active."""
+    root = tempfile.mkdtemp()
+    (Path(root) / ".keystone").mkdir()
+    return root
+
+
 def _run(payload):
     return subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload),
                           capture_output=True, text=True)
 
 
 def test_hook_blocks_write_with_bad_model():
-    p = _run({"tool_name": "Write", "tool_input": {"content": 'm="claude-opus-9-9"'}, "cwd": "."})
+    p = _run({"tool_name": "Write", "tool_input": {"content": 'm="claude-opus-9-9"'}, "cwd": _ks_project()})
     assert p.returncode == 2
     assert "claude-opus-9-9" in p.stderr
 
 
 def test_hook_allows_write_with_approved_model():
-    p = _run({"tool_name": "Write", "tool_input": {"content": 'm="claude-opus-4-8"'}, "cwd": "."})
+    p = _run({"tool_name": "Write", "tool_input": {"content": 'm="claude-opus-4-8"'}, "cwd": _ks_project()})
     assert p.returncode == 0 and p.stderr == ""
 
 
 def test_hook_blocks_bash_calling_bad_model():
-    p = _run({"tool_name": "Bash", "tool_input": {"command": 'claude -p --model claude-fable-5 hi'}, "cwd": "."})
+    p = _run({"tool_name": "Bash", "tool_input": {"command": 'claude -p --model claude-fable-5 hi'}, "cwd": _ks_project()})
     assert p.returncode == 2
     assert "claude-fable-5" in p.stderr
 
 
 def test_hook_ignores_non_mutating_tool():
-    p = _run({"tool_name": "Read", "tool_input": {"file_path": "claude-fable-5.txt"}, "cwd": "."})
+    p = _run({"tool_name": "Read", "tool_input": {"file_path": "claude-fable-5.txt"}, "cwd": _ks_project()})
     assert p.returncode == 0
+
+
+def test_hook_dormant_outside_keystone_project():
+    # No .keystone/ dir -> guard is dormant (safe for a user-scope global install).
+    non_ks = tempfile.mkdtemp()
+    p = _run({"tool_name": "Write", "tool_input": {"content": 'm="claude-fable-5"'}, "cwd": non_ks})
+    assert p.returncode == 0 and p.stderr == ""
 
 
 def _run_all():

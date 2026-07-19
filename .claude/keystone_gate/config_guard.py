@@ -83,7 +83,16 @@ def extract_text(tool_name: str, tool_input: dict) -> str:
     return ""
 
 
+def is_keystone_project(root: str) -> bool:
+    """A project opts into Keystone (and its guards) by having a `.keystone/` dir —
+    created when `/keystone` runs Tier 1. This lets the hooks be installed at USER
+    scope (active everywhere) while staying dormant in non-Keystone projects."""
+    return (Path(root) / ".keystone").is_dir()
+
+
 def check_tool_call(tool_name: str, tool_input: dict, root: str = ".") -> list:
+    if not is_keystone_project(root):
+        return []  # dormant outside Keystone projects — safe for a user-scope install
     approved, zdr = load_policy(root)
     return scan(extract_text(tool_name, tool_input), approved=approved, zdr=zdr)
 
