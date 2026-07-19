@@ -30,6 +30,7 @@ This is the single source of truth for the shape the gate emits (see
 | `created_at` | ISO-8601 | resolution timestamp |
 | `attempts` | int | rework attempts consumed |
 | `session_id` | string | origin session (provenance / correlation) |
+| `feature` | string | the requirements-doc feature this run is bound to (provenance at scale) |
 | `event` | enum | `phase_closed` \| `escalated` |
 
 ## How the synthesizer uses it

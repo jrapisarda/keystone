@@ -99,6 +99,7 @@ def _incident(
     now_ts: float,
     session_id: str,
     uuid_factory: Callable[[], object],
+    feature: str = "",
 ) -> dict:
     """Assemble a complete Incident Record (spec §3.1).
 
@@ -124,6 +125,7 @@ def _incident(
         "created_at": datetime.fromtimestamp(now_ts, tz=timezone.utc).isoformat(),
         "attempts": ph.get("attempt", 0),
         "session_id": session_id or "",
+        "feature": feature or "",   # provenance: which requirements doc/feature (at scale)
         "event": event,
     }
 
@@ -161,6 +163,7 @@ def decide(
             incident = _incident(
                 ph, active, "verifier-passed", "real_fix",
                 "phase_closed", now_ts, session_id, uuid_factory,
+                feature=state.get("feature", ""),
             )
         return Decision(ALLOW, state=state, incident=incident)
 
@@ -179,6 +182,7 @@ def decide(
     incident = _incident(
         ph, active, "escalated-pending-human", "unresolved",
         "escalated", now_ts, session_id, uuid_factory,
+        feature=state.get("feature", ""),
     )
     message = (
         f"Phase '{active}' exhausted its rework budget "

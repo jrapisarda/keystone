@@ -28,8 +28,11 @@ def build_context(root: str):
     except Exception:  # noqa: BLE001
         return None
     s = st["summary"]
+    feature = st.get("feature") or "unnamed"
+    spec = st.get("source_spec") or "?"
     parts = [
-        f"Keystone ledger: {s['green']}/{s['total']} criteria green, "
+        f"Keystone feature '{feature}' (spec: {spec}) — "
+        f"{s['green']}/{s['total']} criteria green, "
         f"{s['due']} due, {s['pending']} pending ({s['cross_cutting']} cross-cutting)."
     ]
     state_file = Path(root) / ".keystone" / "state.json"

@@ -1,9 +1,26 @@
 ---
 name: keystone
-description: Run the Keystone gated structural-verification workflow on an approved requirements document. Sequences Tier 1 (project-init — synthesize, research, architect, build the coverage ledger, get approval) and Tier 2 (per-phase build loop under the Stop-hook gate). Invoke at the start of a requirements-driven build.
+description: Run the Keystone gated structural-verification workflow on an approved requirements document. Invoke as `/keystone <path-to-requirements-doc>`. Sequences Tier 1 (project-init — synthesize, research, architect, build the coverage ledger, get approval) and Tier 2 (per-phase build loop under the Stop-hook gate).
 ---
 
 # Keystone — the orchestrating procedure
+
+## Which requirements doc? (bind it explicitly)
+
+A project has **one full requirements doc per major feature** (e.g.
+`docs/aurelia-astrology-requirements.md`). A Keystone run is bound to exactly one:
+
+- **Explicit (preferred):** the argument to `/keystone` IS the doc path. Use it.
+- **Discovery (fallback):** if no path was given, list `docs/*-requirements.md`
+  whose `Status:` is `Approved for Implementation`. If exactly one, confirm it;
+  if several, **ask which — never silently pick**.
+- **Durable:** record the choice in `.keystone/ledger.json` as `source_spec` (the
+  path) and `feature` (a slug derived from the filename, e.g. `aurelia-astrology`).
+  That binds the whole run — and every incident it produces — to this doc, so a
+  resumed session and the memory store both know which feature they're in.
+- **One active feature at a time.** When a feature's ledger is all-green and signed
+  off, run `cli.py archive` — it files the ledger under `archive/<feature>.ledger.json`
+  and clears the active run so the next `/keystone <next-doc>` starts clean.
 
 You are the **orchestrator** (the main session). You hold the plan, the coverage
 ledger, and the test surface continuously — that state must not be severed, which
@@ -28,7 +45,9 @@ criteria.
    single-owner sub-obligations, each assigned to exactly one phase. Write the
    machine-readable ledger to `.keystone/ledger.json`:
    ```json
-   { "phase_order": ["P1","P2",...], "budget": 3, "completed_phases": [],
+   { "feature": "aurelia-astrology",
+     "source_spec": "docs/aurelia-astrology-requirements.md",
+     "phase_order": ["P1","P2",...], "budget": 3, "completed_phases": [],
      "integration_verified": [],
      "criteria": [ {"id","text","e2e_test"?,
        "sub_obligations":[{"id","owning_phase","proving_test","text"}]} ] }

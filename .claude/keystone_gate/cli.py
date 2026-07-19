@@ -63,6 +63,9 @@ def open_phase(root: str, phase: str) -> list:
     _save_state(root, {
         "active_phase": phase,
         "budget": budget,
+        # provenance carried into state -> incidents (which feature/doc this is):
+        "feature": led.get("feature", ""),
+        "source_spec": led.get("source_spec", ""),
         "phases": {
             phase: {
                 "attempt": 0,
@@ -97,11 +100,30 @@ def close_phase(root: str, phase: str, integration=None) -> dict:
     return led
 
 
+def archive(root: str) -> str:
+    """Feature complete (or switching features): move the active ledger to
+    .keystone/archive/<feature>.ledger.json and clear the active run, so the next
+    `/keystone <doc>` starts clean. Non-destructive — the ledger is preserved under
+    its feature name (provenance). One active feature at a time."""
+    led = _load_ledger(root)
+    feature = led.get("feature") or "unnamed-feature"
+    archive_dir = _kdir(root) / "archive"
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    dest = archive_dir / f"{feature}.ledger.json"
+    dest.write_text(json.dumps(led, indent=2), encoding="utf-8")
+    for f in (_kdir(root) / "ledger.json", _kdir(root) / "state.json"):
+        if f.exists():
+            f.unlink()
+    return str(dest)
+
+
 def status(root: str) -> dict:
     led = _load_ledger(root)
     completed = set(led.get("completed_phases", []))
     verified = set(led.get("integration_verified", []))
     return {
+        "feature": led.get("feature", ""),
+        "source_spec": led.get("source_spec", ""),
         "summary": L.ledger_summary(led["criteria"], completed, verified),
         "problems": L.validate_coverage(led["criteria"], led.get("phase_order")),
         "criteria": [
@@ -124,6 +146,7 @@ def main(argv=None) -> int:
     cp = sub.add_parser("close-phase")
     cp.add_argument("phase")
     cp.add_argument("--integration", nargs="*", default=[])
+    sub.add_parser("archive")
     sub.add_parser("status")
 
     args = ap.parse_args(argv)
@@ -132,6 +155,8 @@ def main(argv=None) -> int:
     elif args.cmd == "close-phase":
         close_phase(args.root, args.phase, args.integration)
         print(json.dumps(status(args.root), indent=2))
+    elif args.cmd == "archive":
+        print(f"archived -> {archive(args.root)}")
     else:
         print(json.dumps(status(args.root), indent=2))
     return 0

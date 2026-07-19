@@ -16,6 +16,8 @@ from keystone_gate import cli  # noqa: E402
 LEDGER = {
     "phase_order": ["P1", "P2", "P3"],
     "budget": 3,
+    "feature": "aurelia-astrology",
+    "source_spec": "docs/aurelia-astrology-requirements.md",
     "completed_phases": [],
     "integration_verified": [],
     "criteria": [
@@ -44,6 +46,34 @@ def test_open_phase_writes_state_with_obligations():
     assert ph["attempt"] == 0 and ph["status"] == "in_progress"
     ids = {o["id"] for o in ph["obligations"]}
     assert "AC-2/b" in ids and "AC-2::e2e" in ids   # P3 owns b AND completes AC-2's e2e
+
+
+def test_open_phase_threads_feature_into_state():
+    root = _project()
+    cli.open_phase(root, "P2")
+    state = json.loads((Path(root) / ".keystone" / "state.json").read_text(encoding="utf-8"))
+    # provenance flows ledger -> state (and thence into incidents)
+    assert state["feature"] == "aurelia-astrology"
+    assert state["source_spec"] == "docs/aurelia-astrology-requirements.md"
+
+
+def test_archive_moves_ledger_by_feature_and_clears_run():
+    root = _project()
+    cli.open_phase(root, "P2")
+    dest = cli.archive(root)
+    assert dest.endswith("aurelia-astrology.ledger.json")
+    archived = json.loads((Path(root) / ".keystone" / "archive" / "aurelia-astrology.ledger.json").read_text(encoding="utf-8"))
+    assert archived["feature"] == "aurelia-astrology"      # preserved (non-destructive)
+    # active run cleared so the next /keystone <doc> starts clean
+    assert not (Path(root) / ".keystone" / "ledger.json").exists()
+    assert not (Path(root) / ".keystone" / "state.json").exists()
+
+
+def test_status_reports_feature_and_spec():
+    root = _project()
+    s = cli.status(root)
+    assert s["feature"] == "aurelia-astrology"
+    assert s["source_spec"] == "docs/aurelia-astrology-requirements.md"
 
 
 def test_open_unknown_phase_errors():

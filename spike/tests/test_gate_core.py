@@ -119,6 +119,14 @@ def test_block_block_block_then_escalate():
     assert inc["time_to_resolve"] == 3
 
 
+def test_incident_carries_feature_provenance():
+    state = {"active_phase": "p1", "budget": 1, "feature": "aurelia-astrology"}
+    state = decide(state, red(), now_ts=T0).state          # attempt 1 -> block
+    d = decide(state, red(), now_ts=T0 + MIN)              # attempt 2 -> escalate + incident
+    assert d.incident is not None
+    assert d.incident["feature"] == "aurelia-astrology"    # provenance at scale
+
+
 def test_escalated_phase_is_not_regated():
     state = {"active_phase": "p1", "budget": 1}
     state = decide(state, red(), now_ts=T0).state          # attempt 1 -> block
