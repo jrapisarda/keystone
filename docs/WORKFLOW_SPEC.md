@@ -448,7 +448,7 @@ Git, trunk-based. Code committed per phase after the gate passes; the `.claude/`
 | IMPLEMENTATION_PLAN.md | Orchestrator + stakeholder | Two-tier plan + coverage ledger; regenerated/updated per phase |
 | docs/ADRs | Future maintainers | Architecture decisions, incl. the layer decomposition rationale |
 | docs/research briefs | Orchestrator | Validated-later hypotheses (never memory until validated) |
-| Workflow README | Stakeholder / collaborators (e.g. Manas) | How to install and invoke `/keystone`; the tier model; the gate semantics |
+| Workflow README | Stakeholder / collaborators | How to install and invoke `/keystone`; the tier model; the gate semantics |
 
 ---
 
