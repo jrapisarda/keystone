@@ -1,6 +1,41 @@
 {
-  "$comment": "Keystone gate — the Stop-hook enforcement. This is the portable wiring that installs with the .claude/ tree. The gate engages only while a phase is active in .keystone/state.json; normal turns pass straight through.",
+  "$comment": "Keystone hook map (WORKFLOW_SPEC §6.2). Enforcement lives here, not in prompts. The Stop gate engages only while a phase is open in .keystone/state.json; the PreToolUse guard scans every code-bearing edit. (pre-commit is a git hook: cp .claude/hooks/pre_commit.py .git/hooks/pre-commit.)",
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/session_start.py\"",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/config_guard.py\"",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/post_edit.py\"",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [

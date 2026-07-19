@@ -14,7 +14,8 @@ The phase's owned sub-obligations and any now-due cross-cutting criteria (from t
 1. **Recall first** — `mcp__memory__memory_search` for how this project builds and tests, and any known false-green traps for this stack.
 2. **Run the tests yourself** with Bash. Never trust a *reported* pass — reproduce it. A suite that is green only because it was weakened or stubbed is a **FAIL**: open the tests behind each obligation and confirm they actually assert the required behavior, including the negative and degenerate cases. A test that asserts nothing meaningful does not satisfy its criterion.
 3. **Check end-to-end for now-due cross-cutting criteria** — their last layer landed this phase, so the integration must actually work, not merely each layer in isolation (the "journal populates its graph" class of regression).
-4. **Hunt stubs and wrong constants** — a hardcoded return, a mocked-away model identity, a fixed seed that makes every output identical, a TODO standing in for behavior. These fail even when a test is green.
+4. **Run the real-build smoke for runtime-bearing phases** — if `.keystone/smoke.json` exists, run `python .claude/keystone_gate/smoke.py`-style checks (boot the real build, real-API round-trip, a non-happy-path). A failed smoke command is a red verdict. **Manual-only checks** it surfaces (e.g. live camera) are handed to the human — flag them, never silently pass them.
+5. **Hunt stubs and wrong constants** — a hardcoded return, a mocked-away model identity, a fixed seed that makes every output identical, a TODO standing in for behavior. These fail even when a test is green.
 
 ## Your verdict — return EXACTLY this structure
 ```json

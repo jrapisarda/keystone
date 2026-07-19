@@ -47,8 +47,11 @@ spike/                      # proof tests (46 across 5 suites)
 3. Six thin subagents (fixed-harness, Opus, tool-scoped). ✅ *done*
 4. Verifier↔gate wiring (swappable verdict-provider seam). ✅ *done (ADR-0001)*
 5. Coverage ledger + `/keystone` orchestration + ledger CLI + skills. ✅ *done*
-6. Consolidation engine + always-on tiering (in `claude-memory-system`). *next*
-7. Dogfood on the astrology/natal-chart feature — and there, confirm the live
+6. Enforcement hook map — config-conformance guard (PreToolUse), SessionStart
+   ledger injection, PostToolUse formatter, pre-commit close-integrity, smoke
+   runner. ✅ *done*
+7. Consolidation engine + always-on tiering (in `claude-memory-system`). *next*
+8. Dogfood on the astrology/natal-chart feature — and there, confirm the live
    verifier-subagent runner (the one open item in ADR-0001).
 
 ## Run the proof
