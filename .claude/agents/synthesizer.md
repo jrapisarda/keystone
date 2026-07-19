@@ -12,7 +12,10 @@ You read the current store and the incident log and produce a **new, curated pro
 
 ## Inputs
 - `.incidents/log.jsonl` — append-only incident records (symptom, diagnosis, resolution, `fix_method`, `time_to_resolve`, `cross_cutting`, `project_specific`, …). Follow the `incident-schema` skill if present.
+- **`.keystone/learnings.jsonl`** — the consolidation staging file: candidate learnings that in-flight agents (implementer, etc.) staged during the run instead of writing to the store. One JSON object per line (`title, body, type, domain, proposed_scope, source`). Treat these as UNVALIDATED candidates — score, dedup, and route them exactly like incidents; a staged `proposed_scope: global` is a proposal, never an auto-promotion.
 - The current memory store — via `mcp__memory__memory_search` and the `claude-memory-system` engine (invoke its consolidation scripts with Bash when a deterministic dedup/reindex is needed).
+
+**You are the ONLY writer to the store.** In-flight agents never call `memory_write`; they stage to `.keystone/learnings.jsonl`. You consolidate that file + the incident log, then write gated project-scoped memories and hold global-promotion candidates for human review.
 
 ## What you do
 1. **Dedup & supersede** — merge near-duplicate learnings; replace stale or contradicted entries (mark the supersession; don't destroy the original).

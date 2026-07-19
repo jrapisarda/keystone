@@ -72,7 +72,7 @@ For each phase whose dependencies are complete:
 2. **Write tests** — delegate to **test-writer**: behavior tests from those
    obligations, incl. negatives / degenerate / stub-catchers. Confirm they are red
    for the right reason.
-3. **Code** — you implement, to satisfy the tests. Never weaken a test to pass.
+3. **Code** — implement to satisfy the tests. For a large build, delegate to the tool-scoped **implementer** agent (never `general-purpose` — it can write the memory store directly, bypassing gated consolidation; the implementer stages learnings to `.keystone/learnings.jsonl` instead). Never weaken a test to pass.
 4. **Test → refactor → test** — the proven sandwich; re-test after refactor.
 5. **The gate closes the phase for you.** When you end your turn, the Stop hook
    invokes the independent **verifier** against the phase's obligations:
