@@ -54,16 +54,20 @@ def main() -> int:
     stop_hook_active = bool(payload.get("stop_hook_active", False))
 
     state = st.load_state(root)
-
-    # Engage the verifier ONLY when a phase is open — normal turns pass straight
-    # through at zero cost. When open, produce a FRESH verdict for this close
-    # attempt (the provider selects static-file vs. verifier-subagent).
     active = state.get("active_phase")
-    if active:
-        phase = state.get("phases", {}).get(active, {})
-        verdict = get_provider().produce(root, active, phase.get("obligations", []))
-    else:
-        verdict = None
+
+    # Dormant: no phase open -> nothing to gate, and nothing to persist. Return
+    # WITHOUT writing anything. This is load-bearing for a user-scope install: the
+    # Stop hook fires on every turn-end in every project, so it must not create
+    # .keystone/ here, or it would silently mark every repo Keystone-managed (and
+    # wake the config-guard everywhere).
+    if not active:
+        return 0
+
+    # A phase is open — produce a FRESH verdict for this close attempt (the
+    # provider selects static-file vs. verifier-subagent).
+    phase = state.get("phases", {}).get(active, {})
+    verdict = get_provider().produce(root, active, phase.get("obligations", []))
 
     decision = decide(state, verdict, now_ts=time.time(), session_id=session_id)
 

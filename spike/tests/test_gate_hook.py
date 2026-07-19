@@ -55,6 +55,17 @@ def test_hook_blocks_on_red():
         assert state["phases"]["p1"]["attempt"] == 1
 
 
+def test_hook_dormant_creates_no_files():
+    # No active phase (and no state at all) -> allow, and crucially persist NOTHING.
+    # This is what keeps a user-scope install from stamping .keystone/ into every repo.
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        out = _run(root, {"cwd": str(root), "session_id": "s0",
+                          "stop_hook_active": False, "hook_event_name": "Stop"})
+        assert out == {}, f"dormant gate should be silent, got {out!r}"
+        assert not (root / ".keystone").exists(), ".keystone/ must NOT be created when dormant"
+
+
 def test_hook_allows_on_green_and_is_silent():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)

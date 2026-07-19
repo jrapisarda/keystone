@@ -98,10 +98,12 @@ def check_tool_call(tool_name: str, tool_input: dict, root: str = ".") -> list:
 
 
 def format_reason(violations: list) -> str:
-    lines = ["Config-conformance guard blocked this edit — disallowed model id(s):"]
+    # Keep this message ASCII-only: it is written to stderr, which is cp1252 on
+    # Windows consoles, where non-ASCII (an em-dash) mangles to a replacement char.
+    lines = ["Config-conformance guard blocked this edit - disallowed model id(s):"]
     for model, reason in violations:
         if reason == "covered-model-under-zdr":
-            lines.append(f"  - {model}: Covered Model (ZDR-incompatible) — not permitted here.")
+            lines.append(f"  - {model}: Covered Model (ZDR-incompatible) - not permitted here.")
         else:
             lines.append(f"  - {model}: not in the approved model set.")
     lines.append("Approved set is the single source of truth in .keystone/models.json.")
