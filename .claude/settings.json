@@ -1,0 +1,16 @@
+{
+  "$comment": "Keystone gate — the Stop-hook enforcement. This is the portable wiring that installs with the .claude/ tree. The gate engages only while a phase is active in .keystone/state.json; normal turns pass straight through.",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/stop_gate.py\"",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
+  }
+}

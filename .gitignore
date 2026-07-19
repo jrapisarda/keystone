@@ -1,0 +1,9 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+
+# Keystone runtime state (per-project; not part of the portable template)
+.keystone/
+.incidents/*.jsonl
