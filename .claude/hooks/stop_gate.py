@@ -35,6 +35,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from keystone_gate import state as st  # noqa: E402
 from keystone_gate.core import ALLOW, BLOCK, ESCALATE, decide  # noqa: E402
+from keystone_gate.verify import get_provider  # noqa: E402
 
 # Absolute deadlock backstop: even if the durable counter is somehow reset
 # mid-loop, never block past this many consecutive continuations.
@@ -53,7 +54,16 @@ def main() -> int:
     stop_hook_active = bool(payload.get("stop_hook_active", False))
 
     state = st.load_state(root)
-    verdict = st.load_verdict(root)
+
+    # Engage the verifier ONLY when a phase is open — normal turns pass straight
+    # through at zero cost. When open, produce a FRESH verdict for this close
+    # attempt (the provider selects static-file vs. verifier-subagent).
+    active = state.get("active_phase")
+    if active:
+        phase = state.get("phases", {}).get(active, {})
+        verdict = get_provider().produce(root, active, phase.get("obligations", []))
+    else:
+        verdict = None
 
     decision = decide(state, verdict, now_ts=time.time(), session_id=session_id)
 
