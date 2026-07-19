@@ -48,12 +48,17 @@ criteria.
    { "feature": "aurelia-astrology",
      "source_spec": "docs/aurelia-astrology-requirements.md",
      "phase_order": ["P1","P2",...], "budget": 3, "completed_phases": [],
-     "integration_verified": [],
-     "criteria": [ {"id","text","e2e_test"?,
+     "integration_verified": [], "smoke_verified": [],
+     "criteria": [ {"id","text","e2e_test"?, "smoke"?,
        "sub_obligations":[{"id","owning_phase","proving_test","text"}]} ] }
    ```
    Then render the human table into `IMPLEMENTATION_PLAN.md` (two-tier plan +
    ledger). Keep the two in sync — JSON drives the gate, the table is for review.
+   **Tag `"smoke": true`** on every criterion whose truth is only knowable by the
+   RUNNING system — "the build boots", "the form works in the browser", "a real API
+   round-trip", "the deployed DB has the migration". These NEVER auto-green from a
+   phase's unit tests (unit tests run against mocks/pglite and can't reach the
+   running system); they green only via the smoke gate below (ADR-0002).
 6. **Validate + approve** — run `python .claude/keystone_gate/cli.py --root . status`.
    Any coverage problem (an unowned criterion, a sub-obligation with no phase or no
    proving test) is a **hard stop** — fix before proceeding. Then present the
@@ -88,6 +93,26 @@ For each phase whose dependencies are complete:
 
 The incident log (`.incidents/log.jsonl`) captures every gate stop + resolution
 automatically — you don't manage it.
+
+## The real-build smoke gate (required before "done" — ADR-0002)
+
+Unit phases run against mocks/pglite; they **cannot** prove the app boots, that the
+form is reachable, or that the real DB has the migration. So `smoke: true` criteria
+stay `due` (never auto-green) until this gate runs — `cli.py status` lists them under
+`smoke_pending`, and `all_green` is false while any remain. Run it at the completing
+phase for a runtime surface (and once more at project close, when the whole app is
+assembled):
+
+1. **Boot the real production build** — `next build` (or the project's equivalent);
+   a crash-on-load fails here.
+2. **Run migrations against a REAL database** — the schema the unit tests exercised
+   via pglite must actually be applied where the app runs (a missing migration is a
+   500 at runtime, invisible to unit tests).
+3. **Drive the specced user journeys against the running app** — Playwright/e2e for
+   the hero + degraded paths; a real API round-trip for the model-call class.
+4. Only for what genuinely passed: `cli.py --root . smoke-verify <AC-id ...>`.
+   Genuinely un-automatable checks are surfaced to the stakeholder as MANUAL — never
+   `smoke-verify`'d on faith. **A feature is not done while `smoke_pending` is non-empty.**
 
 ## Consolidation (batch — project close or every N phases)
 

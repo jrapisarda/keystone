@@ -121,6 +121,26 @@ def test_status_reports_coverage_problems():
     assert any("unowned" in p for p in cli.status(root)["problems"])
 
 
+def test_smoke_verify_is_required_to_green_a_smoke_criterion():
+    root = tempfile.mkdtemp()
+    (Path(root) / ".keystone").mkdir()
+    led = {"phase_order": ["P1"], "budget": 3, "completed_phases": ["P1"],
+           "integration_verified": [], "smoke_verified": [],
+           "criteria": [{"id": "AC-SMOKE", "text": "build boots", "smoke": True,
+                         "sub_obligations": [{"id": "a", "owning_phase": "P1", "proving_test": "t::smoke"}]}]}
+    (Path(root) / ".keystone" / "ledger.json").write_text(json.dumps(led), encoding="utf-8")
+    # P1 is complete, but the smoke criterion is NOT green — it's due + surfaced as smoke_pending
+    s = cli.status(root)
+    assert s["criteria"][0]["status"] == "due"
+    assert s["smoke_pending"] == ["AC-SMOKE"]
+    assert s["summary"]["all_green"] is False
+    # the smoke gate verifies it -> now green
+    cli.smoke_verify(root, ["AC-SMOKE"])
+    s2 = cli.status(root)
+    assert s2["criteria"][0]["status"] == "green"
+    assert s2["smoke_pending"] == [] and s2["summary"]["all_green"] is True
+
+
 def _run_all():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failures = []

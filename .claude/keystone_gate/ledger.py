@@ -38,6 +38,15 @@ def is_cross_cutting(criterion: dict) -> bool:
     return len(owning_phases(criterion)) > 1
 
 
+def is_smoke(criterion: dict) -> bool:
+    """A criterion whose truth is only knowable by the real-build smoke gate —
+    booting the production build, running migrations against a real DB, and
+    driving the running app (Playwright / real API). Such criteria must NOT
+    auto-green when their owning phase's unit tests pass; unit tests run against
+    mocks/pglite and structurally cannot reach the running system."""
+    return bool(criterion.get("smoke", False))
+
+
 def completing_phase(criterion: dict, phase_order: Iterable[str]):
     """The phase whose completion makes the criterion checkable end-to-end —
     the last of its owning phases in dependency (topological) order."""
@@ -51,21 +60,29 @@ def sub_obligation_status(sub: dict, completed_phases: set) -> str:
     return GREEN if sub.get("owning_phase") in completed_phases else PENDING
 
 
-def criterion_status(criterion: dict, completed_phases: set, integration_verified: set) -> str:
-    """Pure AND over sub-obligation phase-completion, plus the due-gate.
+def criterion_status(criterion: dict, completed_phases: set, integration_verified: set,
+                     smoke_verified=frozenset()) -> str:
+    """Pure AND over sub-obligation phase-completion, plus the due-gates.
 
     A single-phase criterion greens when its phase completes (the phase's own
-    verifier already checked it end-to-end). A cross-cutting criterion can only
-    reach `due` on phase-completion, and needs its id in `integration_verified`
-    (the end-to-end pass at the completing phase) to reach `green`.
+    verifier already checked it). A cross-cutting criterion needs `integration_verified`
+    (the end-to-end pass at its completing phase). A **smoke** criterion needs
+    `smoke_verified` (the real-build smoke gate) — it never auto-greens on phase
+    completion, because unit tests can't reach the running system. A criterion that
+    is both requires BOTH gates.
     """
     ops = owning_phases(criterion)
     if not ops:
         return PENDING  # unowned — a coverage bug surfaced by validate_coverage()
     if not ops <= set(completed_phases):
         return PENDING
+    gates = []
     if is_cross_cutting(criterion):
-        return GREEN if criterion["id"] in set(integration_verified) else DUE
+        gates.append(criterion["id"] in set(integration_verified))
+    if is_smoke(criterion):
+        gates.append(criterion["id"] in set(smoke_verified))
+    if gates:
+        return GREEN if all(gates) else DUE
     return GREEN
 
 
@@ -132,16 +149,22 @@ def validate_coverage(criteria: list, phase_order: Iterable[str] | None = None) 
     return problems
 
 
-def ledger_summary(criteria: list, completed_phases: set, integration_verified: set) -> dict:
+def ledger_summary(criteria: list, completed_phases: set, integration_verified: set,
+                   smoke_verified=frozenset()) -> dict:
     counts = {PENDING: 0, DUE: 0, GREEN: 0}
     for c in criteria:
-        counts[criterion_status(c, completed_phases, integration_verified)] += 1
+        counts[criterion_status(c, completed_phases, integration_verified, smoke_verified)] += 1
     return {
         "total": len(criteria),
         **counts,
         "cross_cutting": sum(1 for c in criteria if is_cross_cutting(c)),
+        "smoke": sum(1 for c in criteria if is_smoke(c)),
+        "smoke_pending": sum(
+            1 for c in criteria
+            if is_smoke(c) and criterion_status(c, completed_phases, integration_verified, smoke_verified) != GREEN
+        ),
         "all_green": all(
-            criterion_status(c, completed_phases, integration_verified) == GREEN
+            criterion_status(c, completed_phases, integration_verified, smoke_verified) == GREEN
             for c in criteria
         ),
     }

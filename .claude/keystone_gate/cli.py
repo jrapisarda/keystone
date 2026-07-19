@@ -117,20 +117,38 @@ def archive(root: str) -> str:
     return str(dest)
 
 
+def smoke_verify(root: str, ids) -> dict:
+    """The real-build smoke gate calls this AFTER it has booted the production
+    build, run migrations against a real DB, and driven the specced journeys.
+    Only then may a `smoke: true` criterion reach green."""
+    led = _load_ledger(root)
+    sv = set(led.get("smoke_verified", []))
+    sv.update(ids or [])
+    led["smoke_verified"] = sorted(sv)
+    _save_ledger(root, led)
+    return led
+
+
 def status(root: str) -> dict:
     led = _load_ledger(root)
     completed = set(led.get("completed_phases", []))
     verified = set(led.get("integration_verified", []))
+    smoke = set(led.get("smoke_verified", []))
     return {
         "feature": led.get("feature", ""),
         "source_spec": led.get("source_spec", ""),
-        "summary": L.ledger_summary(led["criteria"], completed, verified),
+        "summary": L.ledger_summary(led["criteria"], completed, verified, smoke),
         "problems": L.validate_coverage(led["criteria"], led.get("phase_order")),
+        "smoke_pending": [
+            c["id"] for c in led["criteria"]
+            if L.is_smoke(c) and L.criterion_status(c, completed, verified, smoke) != L.GREEN
+        ],
         "criteria": [
             {
                 "id": c["id"],
-                "status": L.criterion_status(c, completed, verified),
+                "status": L.criterion_status(c, completed, verified, smoke),
                 "cross_cutting": L.is_cross_cutting(c),
+                "smoke": L.is_smoke(c),
             }
             for c in led["criteria"]
         ],
@@ -146,6 +164,8 @@ def main(argv=None) -> int:
     cp = sub.add_parser("close-phase")
     cp.add_argument("phase")
     cp.add_argument("--integration", nargs="*", default=[])
+    sv = sub.add_parser("smoke-verify")
+    sv.add_argument("ids", nargs="+")
     sub.add_parser("archive")
     sub.add_parser("status")
 
@@ -154,6 +174,9 @@ def main(argv=None) -> int:
         print(json.dumps(open_phase(args.root, args.phase), indent=2))
     elif args.cmd == "close-phase":
         close_phase(args.root, args.phase, args.integration)
+        print(json.dumps(status(args.root), indent=2))
+    elif args.cmd == "smoke-verify":
+        smoke_verify(args.root, args.ids)
         print(json.dumps(status(args.root), indent=2))
     elif args.cmd == "archive":
         print(f"archived -> {archive(args.root)}")

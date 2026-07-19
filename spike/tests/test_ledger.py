@@ -156,6 +156,40 @@ def test_ledger_summary_counts_and_all_green():
     assert s1["green"] == 2 and s1["all_green"] is True
 
 
+# --------------------------------------------------------------------------- #
+# smoke criteria — never auto-green on phase completion (the real-build-smoke fix)
+# --------------------------------------------------------------------------- #
+SMOKE = {"id": "AC-SMOKE-1", "text": "production build boots + real DB migrated", "smoke": True,
+         "sub_obligations": [{"id": "a", "owning_phase": "P1", "proving_test": "t::smoke"}]}
+
+
+def test_smoke_criterion_does_not_autogreen_on_phase_completion():
+    # P1 complete but NOT smoke-verified -> DUE, never GREEN (unit tests can't reach the running system)
+    assert criterion_status(SMOKE, {"P1"}, set()) == DUE
+    assert criterion_status(SMOKE, {"P1"}, set(), smoke_verified={"AC-SMOKE-1"}) == GREEN
+    # still pending before the phase completes at all
+    assert criterion_status(SMOKE, set(), set(), smoke_verified={"AC-SMOKE-1"}) == PENDING
+
+
+def test_smoke_and_cross_cutting_requires_BOTH_gates():
+    crit = {"id": "AC-X", "smoke": True, "sub_obligations": [
+        {"id": "a", "owning_phase": "P1", "proving_test": "t"},
+        {"id": "b", "owning_phase": "P2", "proving_test": "t"}]}
+    both = {"P1", "P2"}
+    assert criterion_status(crit, both, set(), set()) == DUE
+    assert criterion_status(crit, both, {"AC-X"}, set()) == DUE      # smoke still missing
+    assert criterion_status(crit, both, set(), {"AC-X"}) == DUE      # integration still missing
+    assert criterion_status(crit, both, {"AC-X"}, {"AC-X"}) == GREEN  # both gates pass
+
+
+def test_ledger_summary_tracks_smoke_pending_and_blocks_all_green():
+    crits = [SMOKE, {"id": "B", "sub_obligations": [{"id": "a", "owning_phase": "P1", "proving_test": "t"}]}]
+    s = ledger_summary(crits, {"P1"}, set(), set())
+    assert s["smoke"] == 1 and s["smoke_pending"] == 1 and s["all_green"] is False
+    s2 = ledger_summary(crits, {"P1"}, set(), {"AC-SMOKE-1"})
+    assert s2["smoke_pending"] == 0 and s2["all_green"] is True
+
+
 def _run_all():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failures = []
