@@ -29,11 +29,13 @@ consolidation pass writes validated learnings via the memory server's
 ├── settings.json           # hook wiring (the gate)
 ├── hooks/stop_gate.py      # Stop-hook entrypoint
 ├── keystone_gate/          # the gate package (pure core + fs I/O)
-├── agents/                 # 6 thin subagents            (next)
-├── skills/                 # /keystone + preloaded skills (next)
+├── keystone_gate/          # core (gate) + verify (seam) + ledger + cli
+├── agents/                 # 6 thin subagents (verifier, architect, …)
+├── skills/                 # /keystone + incident-schema/adr-format/test-conventions
 └── rules/                  # path-scoped instructions     (next)
 docs/                       # spec, ADRs, research briefs
-spike/                      # gate spike + its proof tests
+spike/                      # proof tests (46 across 5 suites)
+.keystone/                  # runtime: ledger.json + state.json (per project)
 .incidents/log.jsonl        # append-only incident log (synthesizer input)
 ```
 
@@ -41,11 +43,13 @@ spike/                      # gate spike + its proof tests
 
 1. **Gate spike** — block / release / escalate + durable counter + incident
    capture. ✅ *done, proven*
-2. Incident schema + append path. ✅ *falls out of the spike*
-3. Six thin subagents (fixed-harness, Opus, tool-scoped).
-4. Coverage ledger + `/keystone` orchestration.
-5. Consolidation engine + always-on tiering (in `claude-memory-system`).
-6. Dogfood on a real feature.
+2. Incident schema + append path. ✅ *done (skill + gate emit the same record)*
+3. Six thin subagents (fixed-harness, Opus, tool-scoped). ✅ *done*
+4. Verifier↔gate wiring (swappable verdict-provider seam). ✅ *done (ADR-0001)*
+5. Coverage ledger + `/keystone` orchestration + ledger CLI + skills. ✅ *done*
+6. Consolidation engine + always-on tiering (in `claude-memory-system`). *next*
+7. Dogfood on the astrology/natal-chart feature — and there, confirm the live
+   verifier-subagent runner (the one open item in ADR-0001).
 
 ## Run the proof
 
